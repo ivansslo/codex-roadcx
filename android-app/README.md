@@ -31,10 +31,24 @@ cd android-app
 gradle assembleDebug
 ```
 
+On Termux, AGP's downloaded Linux `aapt2` binary cannot run because it targets
+desktop Linux. Use Termux's native `aapt2` override:
+
+```bash
+gradle -Pandroid.aapt2FromMavenOverride=/data/data/com.termux/files/usr/bin/aapt2 assembleDebug
+```
+
+The debug APK is written to:
+
+```text
+android-app/app/build/outputs/apk/debug/app-debug.apk
+```
+
 `npm run stage:android:runtime` copies `codex.bin` and `libc++_shared.so` from the
 Termux-compatible Codex package into ignored Android assets. Override the source
 with `CODEX_ANDROID_RUNTIME_SOURCE=/path/to/runtime/bin` when staging from a
 different runtime build.
 
-This Termux workspace currently does not include Java, Gradle, or the Android SDK,
-so APK builds need to run on a machine/container that has those tools installed.
+This Termux workspace has been tested with `openjdk-17`, `gradle`, `aapt`,
+`aapt2`, and `apksigner` from Termux packages plus Android SDK command-line
+tools installed under a local SDK directory.

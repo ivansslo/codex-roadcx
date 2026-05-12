@@ -4,12 +4,12 @@ plugins {
 
 android {
     namespace = "com.codexapp.mobile"
-    compileSdk = 35
+    compileSdk = 34
 
     defaultConfig {
         applicationId = "com.codexapp.mobile"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 34
         versionCode = 1
         versionName = "0.1.0"
     }

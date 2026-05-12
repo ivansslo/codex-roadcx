@@ -14,7 +14,7 @@ This file tracks manual regression and feature verification steps.
 2. Run `npm run build:android` from the repository root.
 3. Confirm `android-app/app/src/main/assets/codexui/index.html` exists.
 4. Confirm `android-app/app/src/main/assets/codex-runtime/codex.bin` exists.
-5. From `android-app`, run `gradle assembleDebug`.
+5. From `android-app`, run `gradle assembleDebug`, or on Termux run `gradle -Pandroid.aapt2FromMavenOverride=/data/data/com.termux/files/usr/bin/aapt2 assembleDebug`.
 6. Install `android-app/app/build/outputs/apk/debug/app-debug.apk` on an Android device or emulator.
 7. Open the Codex app from the Android launcher in light theme.
 8. Confirm the existing Vue Codex UI loads inside the app WebView rather than an external browser.
