@@ -1,6 +1,7 @@
 node_modules/
 dist/
 dist-cli/
+dist-android-web/
 output/
 .playwright-cli/
 test-results/
@@ -13,3 +14,4 @@ pnpm-lock.yaml
 
 package.json
 .omx/
+android-app/app/src/main/assets/codexui/
