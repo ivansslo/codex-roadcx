@@ -13,6 +13,7 @@ Current milestone:
 - `/codex-api/rpc` proxy that translates browser HTTP requests to Codex app-server JSON-RPC over stdin/stdout.
 - App-private runtime location: `<app files>/codex-runtime/codex.bin`.
 - App-private native library location: `<app files>/codex-runtime/libc++_shared.so`.
+- Executable packaged runtime location: `<nativeLibraryDir>/libcodex_bin.so`.
 - App-private Codex home: `<app files>/codex-home`.
 - Runtime asset extraction from `assets/codex-runtime/` into app-private storage on first launch.
 - Static Vue asset packaging from `dist-android-web`, served through the local Android service.

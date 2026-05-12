@@ -16,6 +16,7 @@ package.json
 .omx/
 android-app/app/src/main/assets/codexui/
 android-app/app/src/main/assets/codex-runtime/
+android-app/app/src/main/jniLibs/
 android-app/local.properties
 android-app/.gradle/
 android-app/build/

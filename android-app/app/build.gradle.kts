@@ -6,6 +6,13 @@ android {
     namespace = "com.codexapp.mobile"
     compileSdk = 34
 
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+            keepDebugSymbols += setOf("**/libcodex_bin.so")
+        }
+    }
+
     defaultConfig {
         applicationId = "com.codexapp.mobile"
         minSdk = 26

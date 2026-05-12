@@ -14,14 +14,15 @@ This file tracks manual regression and feature verification steps.
 2. Run `npm run build:android` from the repository root.
 3. Confirm `android-app/app/src/main/assets/codexui/index.html` exists.
 4. Confirm `android-app/app/src/main/assets/codex-runtime/codex.bin` exists.
-5. From `android-app`, run `gradle assembleDebug`, or on Termux run `gradle -Pandroid.aapt2FromMavenOverride=/data/data/com.termux/files/usr/bin/aapt2 assembleDebug`.
-6. Install `android-app/app/build/outputs/apk/debug/app-debug.apk` on an Android device or emulator.
-7. Open the Codex app from the Android launcher in light theme.
-8. Confirm the existing Vue Codex UI loads inside the app WebView rather than an external browser.
-9. Navigate within the UI and press Android Back.
-10. Confirm WebView history is used before the app exits.
-11. Grant microphone permission when prompted and verify the dictation control can request audio access.
-12. Switch to dark theme and repeat navigation and layout checks.
+5. Confirm `android-app/app/src/main/jniLibs/arm64-v8a/libcodex_bin.so` exists.
+6. From `android-app`, run `gradle assembleDebug`, or on Termux run `gradle -Pandroid.aapt2FromMavenOverride=/data/data/com.termux/files/usr/bin/aapt2 assembleDebug`.
+7. Install `android-app/app/build/outputs/apk/debug/app-debug.apk` on an Android device or emulator.
+8. Open the Codex app from the Android launcher in light theme.
+9. Confirm the existing Vue Codex UI loads inside the app WebView rather than an external browser.
+10. Navigate within the UI and press Android Back.
+11. Confirm WebView history is used before the app exits.
+12. Grant microphone permission when prompted and verify the dictation control can request audio access.
+13. Switch to dark theme and repeat navigation and layout checks.
 
 #### Expected Results
 - The Android app launches as a native APK with the existing Codex UI packaged as local WebView assets.

@@ -1,6 +1,7 @@
 package com.codexapp.mobile;
 
 import android.content.Context;
+import android.content.pm.ApplicationInfo;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -142,7 +143,7 @@ public final class CodexRuntimeProcess {
         builder.environment().put("CODEX_HOME", codexHome.getAbsolutePath());
         builder.environment().put("TMPDIR", context.getCacheDir().getAbsolutePath());
         builder.environment().put("CODEX_SELF_EXE", executable.getAbsolutePath());
-        builder.environment().put("LD_LIBRARY_PATH", getRuntimeDirectory().getAbsolutePath());
+        builder.environment().put("LD_LIBRARY_PATH", getRuntimeLibraryDirectory().getAbsolutePath());
 
         process = builder.start();
         stdin = new BufferedWriter(new OutputStreamWriter(process.getOutputStream(), StandardCharsets.UTF_8));
@@ -247,11 +248,23 @@ public final class CodexRuntimeProcess {
     }
 
     private File getExecutable() {
+        File nativeExecutable = new File(getRuntimeLibraryDirectory(), "libcodex_bin.so");
+        if (nativeExecutable.exists()) {
+            return nativeExecutable;
+        }
         return new File(getRuntimeDirectory(), "codex.bin");
     }
 
     private File getRuntimeDirectory() {
         return new File(context.getFilesDir(), "codex-runtime");
+    }
+
+    private File getRuntimeLibraryDirectory() {
+        ApplicationInfo info = context.getApplicationInfo();
+        if (info.nativeLibraryDir != null && !info.nativeLibraryDir.isEmpty()) {
+            return new File(info.nativeLibraryDir);
+        }
+        return getRuntimeDirectory();
     }
 
     public static final class RuntimeStatus {
