@@ -189,7 +189,7 @@ public final class CodexLocalServer {
                 String[] parts = requestLine.split(" ");
                 String method = parts.length > 0 ? parts[0] : "GET";
                 String path = parts.length > 1 ? parts[1] : "/";
-                if (!"GET".equals(method) && !"HEAD".equals(method) && !"POST".equals(method)) {
+                if (!"GET".equals(method) && !"HEAD".equals(method) && !"POST".equals(method) && !"PUT".equals(method)) {
                     writeText(socket.getOutputStream(), 405, "application/json", "{\"error\":\"method_not_allowed\"}", "HEAD".equals(method));
                     return;
                 }
@@ -210,6 +210,14 @@ public final class CodexLocalServer {
                     handleCodexApi(socket.getOutputStream(), method, path, readBody(reader, headers), "HEAD".equals(method));
                     return;
                 }
+                if (path.startsWith("/codex-local-directories")) {
+                    try {
+                        writeText(socket.getOutputStream(), 200, "application/json", CodexAndroidProjects.listDirectories(context, path), "HEAD".equals(method));
+                    } catch (Exception error) {
+                        writeText(socket.getOutputStream(), 500, "application/json", "{\"error\":\"" + jsonEscape(error.getMessage()) + "\"}", "HEAD".equals(method));
+                    }
+                    return;
+                }
 
                 serveAsset(socket.getOutputStream(), path, "HEAD".equals(method));
             } catch (IOException ignored) {
@@ -227,6 +235,66 @@ public final class CodexLocalServer {
             }
             if ("GET".equals(method) && path.startsWith("/codex-api/server-requests/pending")) {
                 writeText(output, 200, "application/json", "{\"data\":[]}", headOnly);
+                return;
+            }
+            if ("GET".equals(method) && path.startsWith("/codex-api/home-directory")) {
+                writeText(output, 200, "application/json", CodexAndroidProjects.homeDirectory(context), headOnly);
+                return;
+            }
+            if ("GET".equals(method) && path.startsWith("/codex-api/workspace-roots-state")) {
+                try {
+                    writeText(output, 200, "application/json", CodexAndroidProjects.workspaceRootsState(context), headOnly);
+                } catch (Exception error) {
+                    writeText(output, 500, "application/json", "{\"error\":\"" + jsonEscape(error.getMessage()) + "\"}", headOnly);
+                }
+                return;
+            }
+            if ("PUT".equals(method) && path.startsWith("/codex-api/workspace-roots-state")) {
+                try {
+                    writeText(output, 200, "application/json", CodexAndroidProjects.saveWorkspaceRootsState(context, body), headOnly);
+                } catch (Exception error) {
+                    writeText(output, 500, "application/json", "{\"error\":\"" + jsonEscape(error.getMessage()) + "\"}", headOnly);
+                }
+                return;
+            }
+            if ("GET".equals(method) && path.startsWith("/codex-api/thread-queue-state")) {
+                writeText(output, 200, "application/json", CodexAndroidProjects.threadQueueState(context), headOnly);
+                return;
+            }
+            if ("PUT".equals(method) && path.startsWith("/codex-api/thread-queue-state")) {
+                writeText(output, 200, "application/json", CodexAndroidProjects.saveThreadQueueState(context, body), headOnly);
+                return;
+            }
+            if ("POST".equals(method) && path.startsWith("/codex-api/project-root")) {
+                try {
+                    writeText(output, 200, "application/json", CodexAndroidProjects.openProjectRoot(context, body), headOnly);
+                } catch (Exception error) {
+                    writeText(output, 500, "application/json", "{\"error\":\"" + jsonEscape(error.getMessage()) + "\"}", headOnly);
+                }
+                return;
+            }
+            if ("POST".equals(method) && path.startsWith("/codex-api/local-directory")) {
+                try {
+                    writeText(output, 200, "application/json", CodexAndroidProjects.createLocalDirectory(context, body), headOnly);
+                } catch (Exception error) {
+                    writeText(output, 500, "application/json", "{\"error\":\"" + jsonEscape(error.getMessage()) + "\"}", headOnly);
+                }
+                return;
+            }
+            if ("POST".equals(method) && path.startsWith("/codex-api/projectless-thread-cwd")) {
+                try {
+                    writeText(output, 200, "application/json", CodexAndroidProjects.createProjectlessThreadDirectory(context, body), headOnly);
+                } catch (Exception error) {
+                    writeText(output, 500, "application/json", "{\"error\":\"" + jsonEscape(error.getMessage()) + "\"}", headOnly);
+                }
+                return;
+            }
+            if ("GET".equals(method) && path.startsWith("/codex-api/project-root-suggestion")) {
+                try {
+                    writeText(output, 200, "application/json", CodexAndroidProjects.projectRootSuggestion(context, path), headOnly);
+                } catch (Exception error) {
+                    writeText(output, 500, "application/json", "{\"error\":\"" + jsonEscape(error.getMessage()) + "\"}", headOnly);
+                }
                 return;
             }
             if ("GET".equals(method) && path.startsWith("/codex-api/accounts/active")) {
