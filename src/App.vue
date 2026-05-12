@@ -499,6 +499,15 @@
             </span>
           </template>
           <template #actions>
+            <button
+              v-if="accounts.length === 0"
+              class="content-header-login-button"
+              type="button"
+              :disabled="isRefreshingAccounts || isSwitchingAccounts || isStartingCodexLogin || isCompletingCodexLogin"
+              @click="onStartCodexLogin"
+            >
+              {{ isStartingCodexLogin ? t('Logging in…') : t('Login') }}
+            </button>
             <ComposerDropdown
               v-if="canShowTerminalToggle"
               class="content-header-terminal-command"
@@ -5052,6 +5061,10 @@ async function loadWorktreeBranches(sourceCwd: string): Promise<void> {
 
 .sidebar-settings-account-login-link {
   @apply min-w-0 truncate text-xs text-blue-600 hover:text-blue-700 hover:underline;
+}
+
+.content-header-login-button {
+  @apply rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-default disabled:opacity-60;
 }
 
 .sidebar-settings-account-empty {
