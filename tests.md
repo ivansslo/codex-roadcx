@@ -26,7 +26,7 @@ This file tracks manual regression and feature verification steps.
 - Asset paths resolve through the app-owned localhost server at `http://127.0.0.1:37645/index.html`.
 - `http://127.0.0.1:37645/android/health` returns an Android health JSON response while the app is running.
 - `http://127.0.0.1:37645/android/runtime` reports the app-private Codex executable path and whether the runtime is missing, installed, or running.
-- `POST http://127.0.0.1:37645/codex-api/rpc` returns HTTP 503 with a clear runtime-missing error until an Android-compatible Codex executable exists at `<app files>/codex-runtime/codex`.
+- `POST http://127.0.0.1:37645/codex-api/rpc` returns HTTP 503 with a clear runtime-missing error until an Android-compatible Codex executable exists at `<app files>/codex-runtime/codex.bin`.
 - The JavaScript bridge `CodexAndroid.getRuntimeInfo()` returns Android/WebView runtime metadata.
 - Light and dark theme UI surfaces remain readable and match the existing responsive web UI.
 - Codex app-server functionality is not expected to work until the Android runtime service milestone is implemented.

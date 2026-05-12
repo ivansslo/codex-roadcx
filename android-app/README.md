@@ -11,13 +11,14 @@ Current milestone:
 - `CodexAndroid.getRuntimeInfo()` JavaScript bridge for Android runtime detection.
 - App-owned localhost server at `http://127.0.0.1:37645`.
 - `/codex-api/rpc` proxy that translates browser HTTP requests to Codex app-server JSON-RPC over stdin/stdout.
-- App-private runtime location: `<app files>/codex-runtime/codex`.
+- App-private runtime location: `<app files>/codex-runtime/codex.bin`.
+- App-private native library location: `<app files>/codex-runtime/libc++_shared.so`.
 - App-private Codex home: `<app files>/codex-home`.
 - Static Vue asset packaging from `dist-android-web`, served through the local Android service.
 
 Next runtime milestone:
 
-- Bundle or extract an Android-compatible Codex executable to `<app files>/codex-runtime/codex`.
+- Bundle or extract an Android-compatible Codex executable to `<app files>/codex-runtime/codex.bin`.
 - Extend the Android server endpoints that are still implemented by the Node bridge on desktop.
 - Store auth and workspace state under app-private Android storage.
 

@@ -130,6 +130,8 @@ public final class CodexRuntimeProcess {
         builder.environment().put("HOME", context.getFilesDir().getAbsolutePath());
         builder.environment().put("CODEX_HOME", codexHome.getAbsolutePath());
         builder.environment().put("TMPDIR", context.getCacheDir().getAbsolutePath());
+        builder.environment().put("CODEX_SELF_EXE", executable.getAbsolutePath());
+        builder.environment().put("LD_LIBRARY_PATH", getRuntimeDirectory().getAbsolutePath());
 
         process = builder.start();
         stdin = new BufferedWriter(new OutputStreamWriter(process.getOutputStream(), StandardCharsets.UTF_8));
@@ -181,7 +183,11 @@ public final class CodexRuntimeProcess {
     }
 
     private File getExecutable() {
-        return new File(new File(context.getFilesDir(), "codex-runtime"), "codex");
+        return new File(getRuntimeDirectory(), "codex.bin");
+    }
+
+    private File getRuntimeDirectory() {
+        return new File(context.getFilesDir(), "codex-runtime");
     }
 
     public static final class RuntimeStatus {
