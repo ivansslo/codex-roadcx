@@ -242,7 +242,60 @@
         </div>
 
         <template v-if="!isDictationRecording">
+          <div v-if="isAndroid" ref="modelSettingsRootRef" class="thread-composer-model-settings">
+            <button
+              class="thread-composer-model-trigger"
+              type="button"
+              :disabled="isComposerConfigDisabled || models.length === 0"
+              @click="toggleModelSettings"
+            >
+              <span>{{ selectedModelLabel }}</span>
+              <span class="thread-composer-model-trigger-meta">{{ selectedReasoningLabel }} · {{ selectedAccessLabel }}</span>
+            </button>
+            <div v-if="isModelSettingsOpen" class="thread-composer-model-panel">
+              <div class="thread-composer-model-panel-section">
+                <span class="thread-composer-model-panel-label">{{ t('Model') }}</span>
+                <button
+                  v-for="option in modelOptions"
+                  :key="option.value"
+                  class="thread-composer-model-panel-option"
+                  :class="{ 'is-active': option.value === selectedModel }"
+                  type="button"
+                  @click="selectModelFromPanel(option.value)"
+                >
+                  {{ option.label }}
+                </button>
+              </div>
+              <div class="thread-composer-model-panel-section">
+                <span class="thread-composer-model-panel-label">{{ t('Thinking') }}</span>
+                <button
+                  v-for="option in androidReasoningOptions"
+                  :key="option.value"
+                  class="thread-composer-model-panel-option"
+                  :class="{ 'is-active': option.value === selectedReasoningEffort }"
+                  type="button"
+                  @click="onReasoningEffortSelect(option.value)"
+                >
+                  {{ option.label }}
+                </button>
+              </div>
+              <div class="thread-composer-model-panel-section">
+                <span class="thread-composer-model-panel-label">{{ t('Access') }}</span>
+                <button
+                  v-for="option in accessOptions"
+                  :key="option.value"
+                  class="thread-composer-model-panel-option"
+                  :class="{ 'is-active': option.value === selectedAccessMode }"
+                  type="button"
+                  @click="selectAccessMode(option.value)"
+                >
+                  {{ option.label }}
+                </button>
+              </div>
+            </div>
+          </div>
           <ComposerDropdown
+            v-else
             class="thread-composer-control"
             :model-value="selectedModel"
             :options="modelOptions"
@@ -546,12 +599,14 @@ const {
   },
 })
 const attachMenuRootRef = ref<HTMLElement | null>(null)
+const modelSettingsRootRef = ref<HTMLElement | null>(null)
 const photoLibraryInputRef = ref<HTMLInputElement | null>(null)
 const cameraCaptureInputRef = ref<HTMLInputElement | null>(null)
 const folderPickerInputRef = ref<HTMLInputElement | null>(null)
 const inputRef = ref<HTMLTextAreaElement | null>(null)
 const { isMobile } = useMobile()
 const isAttachMenuOpen = ref(false)
+const isModelSettingsOpen = ref(false)
 const mentionStartIndex = ref<number | null>(null)
 const mentionQuery = ref('')
 const fileMentionSuggestions = ref<ComposerFileSuggestion[]>([])
@@ -565,6 +620,7 @@ let dragDepth = 0
 let attachmentSessionToken = 0
 const isAndroid = typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent)
 const DRAFT_STORAGE_PREFIX = 'codex-web-local.thread-draft.v1.'
+const ACCESS_MODE_KEY = 'codex-web-local.android-access-mode.v1'
 let lastActiveThreadId = ''
 
 const reasoningOptions: Array<{ value: ReasoningEffort; label: string }> = [
@@ -575,12 +631,32 @@ const reasoningOptions: Array<{ value: ReasoningEffort; label: string }> = [
   { value: 'high', label: 'High' },
   { value: 'xhigh', label: 'Extra high' },
 ]
+type AndroidAccessMode = 'default' | 'custom' | 'full-access'
+const androidReasoningOptions: Array<{ value: ReasoningEffort; label: string }> = [
+  { value: 'low', label: 'Low' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'high', label: 'High' },
+  { value: 'xhigh', label: 'Extra high' },
+]
+const accessOptions: Array<{ value: AndroidAccessMode; label: string }> = [
+  { value: 'default', label: 'Default' },
+  { value: 'custom', label: 'Custom' },
+  { value: 'full-access', label: 'Full access' },
+]
+const selectedAccessMode = ref<AndroidAccessMode>(loadAccessMode())
 function formatModelLabel(modelId: string): string {
   return modelId.trim().replace(/^gpt/i, 'GPT')
 }
 
 const modelOptions = computed(() =>
   props.models.map((modelId) => ({ value: modelId, label: formatModelLabel(modelId) })),
+)
+const selectedModelLabel = computed(() => props.selectedModel ? formatModelLabel(props.selectedModel) : t('Model'))
+const selectedReasoningLabel = computed(() =>
+  androidReasoningOptions.find((option) => option.value === props.selectedReasoningEffort)?.label || 'Medium',
+)
+const selectedAccessLabel = computed(() =>
+  accessOptions.find((option) => option.value === selectedAccessMode.value)?.label || 'Full access',
 )
 const isPlanModeSelected = computed(() => props.selectedCollaborationMode === 'plan')
 
@@ -1076,6 +1152,36 @@ function onInterrupt(): void {
 
 function onModelSelect(value: string): void {
   emit('update:selected-model', value)
+}
+
+function selectModelFromPanel(value: string): void {
+  onModelSelect(value)
+}
+
+function toggleModelSettings(): void {
+  if (isComposerConfigDisabled.value || props.models.length === 0) return
+  isModelSettingsOpen.value = !isModelSettingsOpen.value
+}
+
+function loadAccessMode(): AndroidAccessMode {
+  if (typeof window === 'undefined') return 'full-access'
+  const value = window.localStorage.getItem(ACCESS_MODE_KEY)
+  return value === 'default' || value === 'custom' || value === 'full-access' ? value : 'full-access'
+}
+
+async function selectAccessMode(mode: AndroidAccessMode): Promise<void> {
+  selectedAccessMode.value = mode
+  window.localStorage?.setItem(ACCESS_MODE_KEY, mode)
+  if (!isAndroid) return
+  try {
+    await fetch('/android/runtime-config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ accessMode: mode }),
+    })
+  } catch {
+    // The label still reflects the requested mode; runtime falls back to its previous config if unavailable.
+  }
 }
 
 function toggleCollaborationMode(): void {
@@ -1744,12 +1850,16 @@ function onSkillDropdownToggle(path: string, checked: boolean): void {
 }
 
 function onDocumentClick(event: MouseEvent): void {
-  if (!isAttachMenuOpen.value) return
-  const root = attachMenuRootRef.value
-  if (!root) return
   const target = event.target as Node | null
-  if (!target || root.contains(target)) return
-  isAttachMenuOpen.value = false
+  if (!target) return
+  const attachRoot = attachMenuRootRef.value
+  if (isAttachMenuOpen.value && attachRoot && !attachRoot.contains(target)) {
+    isAttachMenuOpen.value = false
+  }
+  const modelRoot = modelSettingsRootRef.value
+  if (isModelSettingsOpen.value && modelRoot && !modelRoot.contains(target)) {
+    isModelSettingsOpen.value = false
+  }
 }
 
 onMounted(() => {
@@ -1758,6 +1868,7 @@ onMounted(() => {
   window.addEventListener('dragend', onWindowDragCleanup)
   window.addEventListener('blur', onWindowDragCleanup)
   void reloadPrompts()
+  void selectAccessMode(selectedAccessMode.value)
 })
 
 defineExpose<ThreadComposerExposed>({
@@ -2132,6 +2243,42 @@ watch(
 
 .thread-composer-attach-switch.is-disabled {
   @apply opacity-50;
+}
+
+.thread-composer-model-settings {
+  @apply relative min-w-0 flex-1;
+}
+
+.thread-composer-model-trigger {
+  @apply flex h-9 w-full min-w-0 items-center gap-2 rounded-lg border border-zinc-200 bg-white px-2.5 text-left text-xs text-zinc-800 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-60;
+}
+
+.thread-composer-model-trigger span:first-child {
+  @apply min-w-0 flex-1 truncate font-medium;
+}
+
+.thread-composer-model-trigger-meta {
+  @apply shrink-0 text-[10px] text-zinc-500;
+}
+
+.thread-composer-model-panel {
+  @apply absolute bottom-11 left-0 z-30 grid w-[min(24rem,calc(100vw-1rem))] grid-cols-3 gap-2 rounded-xl border border-zinc-200 bg-white p-2 shadow-lg;
+}
+
+.thread-composer-model-panel-section {
+  @apply flex min-w-0 flex-col gap-1;
+}
+
+.thread-composer-model-panel-label {
+  @apply px-1 pb-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-400;
+}
+
+.thread-composer-model-panel-option {
+  @apply min-w-0 truncate rounded-md border-0 bg-transparent px-2 py-1.5 text-left text-xs text-zinc-700 transition hover:bg-zinc-100;
+}
+
+.thread-composer-model-panel-option.is-active {
+  @apply bg-zinc-900 text-white hover:bg-zinc-900;
 }
 
 .thread-composer-control {

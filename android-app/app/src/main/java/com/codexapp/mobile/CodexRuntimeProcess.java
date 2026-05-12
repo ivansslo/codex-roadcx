@@ -39,6 +39,8 @@ public final class CodexRuntimeProcess {
     private Thread stdoutThread;
     private Thread stderrThread;
     private boolean initialized;
+    private String approvalPolicy = "never";
+    private String sandboxMode = "danger-full-access";
 
     private CodexRuntimeProcess(Context context) {
         this.context = context.getApplicationContext();
@@ -202,9 +204,9 @@ public final class CodexRuntimeProcess {
             executable.getAbsolutePath(),
             "app-server",
             "-c",
-            "approval_policy=\"never\"",
+            "approval_policy=\"" + approvalPolicy + "\"",
             "-c",
-            "sandbox_mode=\"danger-full-access\""
+            "sandbox_mode=\"" + sandboxMode + "\""
         );
         builder.directory(workspaceRoot);
         populateRuntimeEnvironment(builder.environment());
@@ -212,6 +214,37 @@ public final class CodexRuntimeProcess {
         process = builder.start();
         stdin = new BufferedWriter(new OutputStreamWriter(process.getOutputStream(), StandardCharsets.UTF_8));
         startReaders(process);
+    }
+
+    public synchronized String setAccessMode(String body) throws JSONException {
+        JSONObject payload = new JSONObject(body == null ? "{}" : body);
+        String accessMode = payload.optString("accessMode", "full-access");
+        if ("default".equals(accessMode)) {
+            approvalPolicy = "on-request";
+            sandboxMode = "workspace-write";
+        } else if ("custom".equals(accessMode)) {
+            approvalPolicy = "on-failure";
+            sandboxMode = "workspace-write";
+        } else {
+            accessMode = "full-access";
+            approvalPolicy = "never";
+            sandboxMode = "danger-full-access";
+        }
+        stopProcess();
+        return "{\"data\":{\"accessMode\":\"" + accessMode + "\",\"approvalPolicy\":\"" + approvalPolicy + "\",\"sandboxMode\":\"" + sandboxMode + "\"}}";
+    }
+
+    private synchronized void stopProcess() {
+        initialized = false;
+        for (CompletableFuture<String> future : pending.values()) {
+            future.cancel(true);
+        }
+        pending.clear();
+        stdin = null;
+        if (process != null) {
+            process.destroy();
+        }
+        process = null;
     }
 
     private void installRuntimeAssetsIfAvailable() throws IOException {

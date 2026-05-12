@@ -198,6 +198,14 @@ public final class CodexLocalServer {
                     writeText(socket.getOutputStream(), 200, "application/json", "{\"ok\":true,\"platform\":\"android\"}", "HEAD".equals(method));
                     return;
                 }
+                if ("POST".equals(method) && path.startsWith("/android/runtime-config")) {
+                    try {
+                        writeText(socket.getOutputStream(), 200, "application/json", CodexRuntimeProcess.get(context).setAccessMode(readBody(reader, headers)), "HEAD".equals(method));
+                    } catch (Exception error) {
+                        writeText(socket.getOutputStream(), 400, "application/json", "{\"error\":\"" + jsonEscape(error.getMessage()) + "\"}", "HEAD".equals(method));
+                    }
+                    return;
+                }
                 if (path.startsWith("/android/runtime")) {
                     writeText(socket.getOutputStream(), 200, "application/json", CodexRuntimeProcess.get(context).getStatus().toJson(), "HEAD".equals(method));
                     return;
