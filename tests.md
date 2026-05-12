@@ -7,6 +7,7 @@ This file tracks manual regression and feature verification steps.
 #### Prerequisites
 - A host machine or container has Java, Gradle, and Android SDK installed.
 - Node dependencies are installed in this repository.
+- `android-app/app/src/main/res/mipmap-*/ic_launcher*.png` launcher icons exist.
 - Light and dark themes are both available from Settings.
 
 #### Steps
@@ -18,14 +19,16 @@ This file tracks manual regression and feature verification steps.
 6. From `android-app`, run `gradle assembleDebug`, or on Termux run `gradle -Pandroid.aapt2FromMavenOverride=/data/data/com.termux/files/usr/bin/aapt2 assembleDebug`.
 7. Install `android-app/app/build/outputs/apk/debug/app-debug.apk` on an Android device or emulator.
 8. Open the Codex app from the Android launcher in light theme.
-9. Confirm the existing Vue Codex UI loads inside the app WebView rather than an external browser.
-10. Navigate within the UI and press Android Back.
-11. Confirm WebView history is used before the app exits.
-12. Grant microphone permission when prompted and verify the dictation control can request audio access.
-13. Switch to dark theme and repeat navigation and layout checks.
+9. Confirm the launcher shows the Codex cloud terminal icon and that the launcher applies its normal rounded icon mask.
+10. Confirm the existing Vue Codex UI loads inside the app WebView rather than an external browser.
+11. Navigate within the UI and press Android Back.
+12. Confirm WebView history is used before the app exits.
+13. Grant microphone permission when prompted and verify the dictation control can request audio access.
+14. Switch to dark theme and repeat navigation and layout checks.
 
 #### Expected Results
 - The Android app launches as a native APK with the existing Codex UI packaged as local WebView assets.
+- The launcher icon uses the supplied Codex image, with adaptive icon resources for modern Android launchers and rounded legacy PNG fallbacks.
 - Asset paths resolve through the app-owned localhost server at `http://127.0.0.1:37645/index.html`.
 - `http://127.0.0.1:37645/android/health` returns an Android health JSON response while the app is running.
 - `http://127.0.0.1:37645/android/runtime` reports the app-private Codex executable path and whether the runtime is missing, installed, or running.
