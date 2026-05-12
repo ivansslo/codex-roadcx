@@ -3,6 +3,7 @@ package com.codexapp.mobile;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.webkit.JavascriptInterface;
@@ -18,9 +19,11 @@ public final class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         requestAudioPermission();
+        CodexLocalServer.ensureStarted(getApplicationContext());
+        startService(new Intent(this, CodexRuntimeService.class));
         webView = createWebView();
         setContentView(webView);
-        webView.loadUrl("file:///android_asset/codexui/index.html");
+        webView.loadUrl(CodexLocalServer.getBaseUrl() + "/index.html");
     }
 
     @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
@@ -62,7 +65,7 @@ public final class MainActivity extends Activity {
     public static final class NativeBridge {
         @JavascriptInterface
         public String getRuntimeInfo() {
-            return "{\"platform\":\"android\",\"host\":\"webview\",\"codexRuntime\":\"pending\"}";
+            return "{\"platform\":\"android\",\"host\":\"webview\",\"server\":\"" + CodexLocalServer.getBaseUrl() + "\",\"codexRuntime\":\"pending\"}";
         }
     }
 }

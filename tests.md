@@ -23,7 +23,8 @@ This file tracks manual regression and feature verification steps.
 
 #### Expected Results
 - The Android app launches as a native APK with the existing Codex UI packaged as local WebView assets.
-- Asset paths resolve from `file:///android_asset/codexui/index.html`.
+- Asset paths resolve through the app-owned localhost server at `http://127.0.0.1:37645/index.html`.
+- `http://127.0.0.1:37645/android/health` returns an Android health JSON response while the app is running.
 - The JavaScript bridge `CodexAndroid.getRuntimeInfo()` returns Android/WebView runtime metadata.
 - Light and dark theme UI surfaces remain readable and match the existing responsive web UI.
 - Codex app-server functionality is not expected to work until the Android runtime service milestone is implemented.

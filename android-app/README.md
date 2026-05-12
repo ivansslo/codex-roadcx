@@ -9,13 +9,13 @@ Current milestone:
 - Native Android launcher app.
 - WebView host with JavaScript, DOM storage, microphone permission, and back navigation.
 - `CodexAndroid.getRuntimeInfo()` JavaScript bridge for Android runtime detection.
-- Static Vue asset packaging from `dist-android-web`.
+- App-owned localhost server at `http://127.0.0.1:37645`.
+- Static Vue asset packaging from `dist-android-web`, served through the local Android service.
 
 Next runtime milestone:
 
-- Add an Android background service.
-- Start an app-private Codex bridge/runtime from that service.
-- Point the WebView UI at the service endpoints instead of the desktop/Termux bridge.
+- Start an app-private Codex bridge/runtime from the Android service.
+- Proxy `/codex-api/*` from the local Android server to the embedded runtime.
 - Store auth and workspace state under app-private Android storage.
 
 Build flow from a host with Android SDK and Java installed:
