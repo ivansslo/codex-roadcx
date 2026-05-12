@@ -1111,6 +1111,7 @@ const TERMINAL_QUICK_COMMAND_STORAGE_KEY = 'codex-web-local.terminal-quick-comma
 const TOGGLE_TERMINAL_COMMAND_VALUE = '__toggle_terminal__'
 const worktreeName = import.meta.env.VITE_WORKTREE_NAME ?? 'unknown'
 const appVersion = import.meta.env.VITE_APP_VERSION ?? 'unknown'
+const isAndroidHost = typeof window !== 'undefined' && 'CodexAndroid' in window
 const SETTINGS_HELP = {
   sendWithEnter: t('When enabled, press Enter to send. When disabled, use Command+Enter to send.'),
   inProgressSendMode: t('If a turn is still running, choose whether a new prompt should steer the current turn or be queued.'),
@@ -1860,13 +1861,15 @@ const terminalHeaderDropdownOptions = computed(() => [
 ])
 const contentStyle = computed(() => {
   const preset = CHAT_WIDTH_PRESETS[chatWidth.value]
+  const columnMax = isAndroidHost ? '100%' : preset.columnMax
+  const cardMax = isAndroidHost ? '100%' : preset.cardMax
   const keyboardInset = Math.max(
     0,
     layoutViewportHeight.value - visualViewportHeight.value - visualViewportOffsetTop.value,
   )
   return {
-    '--chat-column-max': preset.columnMax,
-    '--chat-card-max': preset.cardMax,
+    '--chat-column-max': columnMax,
+    '--chat-card-max': cardMax,
     '--visual-viewport-height': visualViewportHeight.value > 0 ? `${visualViewportHeight.value}px` : '100dvh',
     '--visual-viewport-offset-top': `${Math.max(0, visualViewportOffsetTop.value)}px`,
     '--virtual-keyboard-inset': `${keyboardInset}px`,
@@ -2276,13 +2279,24 @@ async function onStartCodexLogin(): Promise<void> {
     const loginUrl = await startCodexLogin()
     codexLoginUrl.value = loginUrl
     isCodexLoginModalOpen.value = true
-    window.open(loginUrl, '_blank', 'noopener,noreferrer')
+    if (isValidHttpUrl(loginUrl)) {
+      window.open(loginUrl, '_blank', 'noopener,noreferrer')
+    }
     await nextTick()
     codexLoginCallbackInputRef.value?.focus()
   } catch (error) {
     accountActionError.value = error instanceof Error ? error.message : t('Failed to start Codex login')
   } finally {
     isStartingCodexLogin.value = false
+  }
+}
+
+function isValidHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value)
+    return url.protocol === 'http:' || url.protocol === 'https:'
+  } catch {
+    return false
   }
 }
 

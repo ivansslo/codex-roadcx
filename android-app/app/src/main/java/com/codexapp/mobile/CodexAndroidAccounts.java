@@ -84,7 +84,7 @@ public final class CodexAndroidAccounts {
             activeLogin = builder.start();
             startLoginReader(activeLogin.getInputStream(), loginUrl);
             startLoginReader(activeLogin.getErrorStream(), loginUrl);
-            String url = loginUrl.get(20, TimeUnit.SECONDS);
+            String url = sanitizeLoginUrl(loginUrl.get(20, TimeUnit.SECONDS));
             return "{\"ok\":true,\"data\":{\"loginUrl\":\"" + escape(url) + "\"}}";
         }
     }
@@ -133,7 +133,7 @@ public final class CodexAndroidAccounts {
                 while ((line = buffered.readLine()) != null) {
                     Matcher matcher = URL_PATTERN.matcher(line);
                     if (matcher.find()) {
-                        loginUrl.complete(matcher.group());
+                        loginUrl.complete(sanitizeLoginUrl(matcher.group()));
                     }
                 }
             } catch (IOException ignored) {
@@ -174,6 +174,15 @@ public final class CodexAndroidAccounts {
 
     private static File authFile(Context context) {
         return new File(CodexRuntimeProcess.get(context).getCodexHomeDirectory(), "auth.json");
+    }
+
+    private static String sanitizeLoginUrl(String rawUrl) {
+        String url = rawUrl == null ? "" : rawUrl.trim();
+        while (url.endsWith(".") || url.endsWith(",") || url.endsWith(";") || url.endsWith(")") || url.endsWith("]")) {
+            url = url.substring(0, url.length() - 1);
+        }
+        url = url.replaceAll(":([0-9]+)\\.(?=/|$)", ":$1");
+        return url;
     }
 
     private static String escape(String value) {
