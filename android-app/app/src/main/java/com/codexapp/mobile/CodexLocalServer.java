@@ -12,7 +12,9 @@ import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -111,17 +113,25 @@ public final class CodexLocalServer {
                 if (requestLine == null || requestLine.isEmpty()) {
                     return;
                 }
+                Map<String, String> headers = new HashMap<>();
                 while (true) {
                     String header = reader.readLine();
                     if (header == null || header.isEmpty()) {
                         break;
+                    }
+                    int separator = header.indexOf(':');
+                    if (separator > 0) {
+                        headers.put(
+                            header.substring(0, separator).trim().toLowerCase(Locale.US),
+                            header.substring(separator + 1).trim()
+                        );
                     }
                 }
 
                 String[] parts = requestLine.split(" ");
                 String method = parts.length > 0 ? parts[0] : "GET";
                 String path = parts.length > 1 ? parts[1] : "/";
-                if (!"GET".equals(method) && !"HEAD".equals(method)) {
+                if (!"GET".equals(method) && !"HEAD".equals(method) && !"POST".equals(method)) {
                     writeText(socket.getOutputStream(), 405, "application/json", "{\"error\":\"method_not_allowed\"}", "HEAD".equals(method));
                     return;
                 }
@@ -131,13 +141,91 @@ public final class CodexLocalServer {
                     return;
                 }
                 if (path.startsWith("/android/runtime")) {
-                    writeText(socket.getOutputStream(), 200, "application/json", "{\"platform\":\"android\",\"host\":\"local-service\",\"codexRuntime\":\"pending\"}", "HEAD".equals(method));
+                    writeText(socket.getOutputStream(), 200, "application/json", CodexRuntimeProcess.get(context).getStatus().toJson(), "HEAD".equals(method));
+                    return;
+                }
+                if (path.startsWith("/codex-api/")) {
+                    handleCodexApi(socket.getOutputStream(), method, path, readBody(reader, headers), "HEAD".equals(method));
                     return;
                 }
 
                 serveAsset(socket.getOutputStream(), path, "HEAD".equals(method));
             } catch (IOException ignored) {
             }
+        }
+
+        private void handleCodexApi(OutputStream output, String method, String path, String body, boolean headOnly) throws IOException {
+            if ("GET".equals(method) && path.startsWith("/codex-api/events")) {
+                writeSseReady(output, headOnly);
+                return;
+            }
+            if ("GET".equals(method) && path.startsWith("/codex-api/meta/methods")) {
+                writeText(output, 200, "application/json", "{\"data\":[]}", headOnly);
+                return;
+            }
+            if ("GET".equals(method) && path.startsWith("/codex-api/meta/notifications")) {
+                writeText(output, 200, "application/json", "{\"data\":[]}", headOnly);
+                return;
+            }
+            if ("GET".equals(method) && path.startsWith("/codex-api/server-requests/pending")) {
+                writeText(output, 200, "application/json", "{\"data\":[]}", headOnly);
+                return;
+            }
+            if ("POST".equals(method) && path.startsWith("/codex-api/server-requests/respond")) {
+                writeText(output, 200, "application/json", "{\"ok\":true}", headOnly);
+                return;
+            }
+            if ("POST".equals(method) && path.startsWith("/codex-api/rpc")) {
+                try {
+                    String response = CodexRuntimeProcess.get(context).callRpc(body);
+                    writeText(output, 200, "application/json", response, headOnly);
+                } catch (Exception error) {
+                    writeText(output, 503, "application/json", "{\"error\":\"" + jsonEscape(error.getMessage()) + "\"}", headOnly);
+                }
+                return;
+            }
+
+            writeText(output, 404, "application/json", "{\"error\":\"android_endpoint_not_implemented\"}", headOnly);
+        }
+
+        private static String readBody(BufferedReader reader, Map<String, String> headers) throws IOException {
+            int length = 0;
+            try {
+                String rawLength = headers.get("content-length");
+                if (rawLength != null) {
+                    length = Integer.parseInt(rawLength);
+                }
+            } catch (NumberFormatException ignored) {
+                length = 0;
+            }
+            if (length <= 0) {
+                return "";
+            }
+            char[] body = new char[length];
+            int offset = 0;
+            while (offset < length) {
+                int read = reader.read(body, offset, length - offset);
+                if (read < 0) {
+                    break;
+                }
+                offset += read;
+            }
+            return new String(body, 0, offset);
+        }
+
+        private static void writeSseReady(OutputStream output, boolean headOnly) throws IOException {
+            byte[] body = "event: ready\ndata: {\"ok\":true,\"platform\":\"android\"}\n\n".getBytes(StandardCharsets.UTF_8);
+            String headers = "HTTP/1.1 200 OK\r\n"
+                + "Content-Type: text/event-stream\r\n"
+                + "Content-Length: " + body.length + "\r\n"
+                + "Cache-Control: no-cache\r\n"
+                + "Connection: close\r\n"
+                + "\r\n";
+            output.write(headers.getBytes(StandardCharsets.UTF_8));
+            if (!headOnly) {
+                output.write(body);
+            }
+            output.flush();
         }
 
         private void serveAsset(OutputStream output, String rawPath, boolean headOnly) throws IOException {
@@ -174,6 +262,13 @@ public final class CodexLocalServer {
             return path.startsWith("/") ? path : "/" + path;
         }
 
+        private static String jsonEscape(String value) {
+            if (value == null) {
+                return "";
+            }
+            return value.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r");
+        }
+
         private static String contentType(String path) {
             String lower = path.toLowerCase(Locale.US);
             if (lower.endsWith(".html")) return "text/html; charset=utf-8";
@@ -202,7 +297,7 @@ public final class CodexLocalServer {
         }
 
         private static void writeBytes(OutputStream output, int status, String type, byte[] body, boolean headOnly) throws IOException {
-            String reason = status == 200 ? "OK" : status == 405 ? "Method Not Allowed" : "Error";
+            String reason = status == 200 ? "OK" : status == 404 ? "Not Found" : status == 405 ? "Method Not Allowed" : status == 503 ? "Service Unavailable" : "Error";
             String headers = "HTTP/1.1 " + status + " " + reason + "\r\n"
                 + "Content-Type: " + type + "\r\n"
                 + "Content-Length: " + body.length + "\r\n"
