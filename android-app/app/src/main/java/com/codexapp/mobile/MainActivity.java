@@ -8,8 +8,10 @@ import android.content.pm.PackageManager;
 import android.content.pm.ApplicationInfo;
 import android.os.Bundle;
 import android.webkit.JavascriptInterface;
+import android.webkit.PermissionRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
+import android.webkit.WebChromeClient;
 import android.webkit.WebViewClient;
 
 public final class MainActivity extends Activity {
@@ -38,6 +40,15 @@ public final class MainActivity extends Activity {
         settings.setAllowFileAccess(true);
         settings.setAllowContentAccess(true);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
+        view.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public void onPermissionRequest(PermissionRequest request) {
+                if (android.os.Build.VERSION.SDK_INT < 21) {
+                    return;
+                }
+                request.grant(request.getResources());
+            }
+        });
         view.setWebViewClient(new WebViewClient());
         view.addJavascriptInterface(new NativeBridge(), "CodexAndroid");
         WebView.setWebContentsDebuggingEnabled((getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0);

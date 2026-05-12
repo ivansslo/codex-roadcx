@@ -63,13 +63,18 @@ public final class CodexRuntimeProcess {
     }
 
     public synchronized String callRpc(String httpBody) throws IOException, JSONException, TimeoutException {
-        ensureStarted();
-
         JSONObject incoming = new JSONObject(httpBody);
         String method = incoming.optString("method", "");
         if (method.isEmpty()) {
             return "{\"error\":\"Invalid body: expected { method, params? }\"}";
         }
+
+        String androidFallback = getAndroidCatalogFallback(method);
+        if (androidFallback != null) {
+            return androidFallback;
+        }
+
+        ensureStarted();
 
         int id = NEXT_ID.getAndIncrement();
         JSONObject request = new JSONObject();
@@ -104,6 +109,32 @@ public final class CodexRuntimeProcess {
         } catch (Exception error) {
             pending.remove(id);
             throw new IOException("Codex RPC failed", error);
+        }
+    }
+
+    private static String getAndroidCatalogFallback(String method) {
+        switch (method) {
+            case "plugin/list":
+                return "{\"result\":{\"marketplaces\":[]}}";
+            case "plugin/read":
+                return "{\"result\":{\"plugin\":null}}";
+            case "plugin/install":
+                return "{\"result\":{\"authPolicy\":\"NONE\",\"appsNeedingAuth\":[]}}";
+            case "plugin/uninstall":
+            case "config/mcpServer/reload":
+            case "config/batchWrite":
+                return "{\"result\":{}}";
+            case "app/list":
+            case "mcpServerStatus/list":
+                return "{\"result\":{\"data\":[],\"nextCursor\":null}}";
+            case "skills/list":
+                return "{\"result\":{\"data\":[]}}";
+            case "account/rateLimits/read":
+                return "{\"result\":{\"primary\":null,\"secondary\":null}}";
+            case "collaborationMode/list":
+                return "{\"result\":{\"data\":[]}}";
+            default:
+                return null;
         }
     }
 

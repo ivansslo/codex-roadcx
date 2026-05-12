@@ -22,6 +22,35 @@ public final class CodexLocalServer {
     private static final int PORT = 37645;
     private static final String ASSET_ROOT = "codexui";
     private static final Object LOCK = new Object();
+    private static final String METHOD_CATALOG = "{\"data\":["
+        + "\"account/rateLimits/read\","
+        + "\"app/list\","
+        + "\"collaborationMode/list\","
+        + "\"config/batchWrite\","
+        + "\"config/mcpServer/reload\","
+        + "\"config/read\","
+        + "\"generate-thread-title\","
+        + "\"mcpServer/oauth/login\","
+        + "\"mcpServerStatus/list\","
+        + "\"model/list\","
+        + "\"plugin/install\","
+        + "\"plugin/list\","
+        + "\"plugin/read\","
+        + "\"plugin/uninstall\","
+        + "\"review/start\","
+        + "\"setDefaultModel\","
+        + "\"skills/list\","
+        + "\"thread/archive\","
+        + "\"thread/fork\","
+        + "\"thread/list\","
+        + "\"thread/name/set\","
+        + "\"thread/read\","
+        + "\"thread/resume\","
+        + "\"thread/rollback\","
+        + "\"thread/start\","
+        + "\"turn/interrupt\","
+        + "\"turn/start\""
+        + "]}";
 
     private static LocalHttpServer server;
 
@@ -160,7 +189,7 @@ public final class CodexLocalServer {
                 return;
             }
             if ("GET".equals(method) && path.startsWith("/codex-api/meta/methods")) {
-                writeText(output, 200, "application/json", "{\"data\":[]}", headOnly);
+                writeText(output, 200, "application/json", METHOD_CATALOG, headOnly);
                 return;
             }
             if ("GET".equals(method) && path.startsWith("/codex-api/meta/notifications")) {
@@ -181,6 +210,14 @@ public final class CodexLocalServer {
             }
             if ("POST".equals(method) && path.startsWith("/codex-api/accounts/refresh")) {
                 writeText(output, 200, "application/json", CodexAndroidAccounts.refresh(context), headOnly);
+                return;
+            }
+            if ("POST".equals(method) && path.startsWith("/codex-api/accounts/switch")) {
+                writeText(output, 200, "application/json", CodexAndroidAccounts.switchActive(context, body), headOnly);
+                return;
+            }
+            if ("POST".equals(method) && path.startsWith("/codex-api/accounts/remove")) {
+                writeText(output, 200, "application/json", CodexAndroidAccounts.remove(context, body), headOnly);
                 return;
             }
             if ("POST".equals(method) && path.startsWith("/codex-api/accounts/login/start")) {

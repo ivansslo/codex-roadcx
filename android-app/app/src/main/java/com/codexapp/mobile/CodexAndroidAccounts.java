@@ -7,6 +7,7 @@ import org.json.JSONObject;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -108,6 +109,20 @@ public final class CodexAndroidAccounts {
     }
 
     public static String refresh(Context context) {
+        return listAccounts(context);
+    }
+
+    public static String switchActive(Context context, String body) {
+        return listAccounts(context);
+    }
+
+    public static String remove(Context context, String body) throws IOException {
+        File auth = authFile(context);
+        if (auth.exists() && !auth.delete()) {
+            try (FileOutputStream output = new FileOutputStream(auth, false)) {
+                output.write(new byte[0]);
+            }
+        }
         return listAccounts(context);
     }
 
