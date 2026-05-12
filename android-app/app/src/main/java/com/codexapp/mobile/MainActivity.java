@@ -6,9 +6,11 @@ import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ApplicationInfo;
+import android.net.Uri;
 import android.os.Bundle;
 import android.webkit.JavascriptInterface;
 import android.webkit.PermissionRequest;
+import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebChromeClient;
@@ -49,10 +51,39 @@ public final class MainActivity extends Activity {
                 request.grant(request.getResources());
             }
         });
-        view.setWebViewClient(new WebViewClient());
+        view.setWebViewClient(new WebViewClient() {
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                if (android.os.Build.VERSION.SDK_INT < 21) {
+                    return false;
+                }
+                return openExternalIfNeeded(request.getUrl());
+            }
+
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                return openExternalIfNeeded(Uri.parse(url));
+            }
+        });
         view.addJavascriptInterface(new NativeBridge(), "CodexAndroid");
         WebView.setWebContentsDebuggingEnabled((getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0);
         return view;
+    }
+
+    private boolean openExternalIfNeeded(Uri uri) {
+        if (uri == null) {
+            return false;
+        }
+        String scheme = uri.getScheme();
+        if (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme)) {
+            return false;
+        }
+        String host = uri.getHost();
+        if ("127.0.0.1".equals(host) || "localhost".equals(host)) {
+            return false;
+        }
+        startActivity(new Intent(Intent.ACTION_VIEW, uri));
+        return true;
     }
 
     private void requestAudioPermission() {

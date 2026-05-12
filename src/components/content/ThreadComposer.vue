@@ -243,16 +243,6 @@
 
         <template v-if="!isDictationRecording">
           <ComposerDropdown
-            class="thread-composer-control thread-composer-permissions"
-            :model-value="selectedPermissionMode"
-            :options="permissionOptions"
-            :placeholder="t('Permissions')"
-            open-direction="up"
-            :disabled="isComposerConfigDisabled"
-            @update:model-value="onPermissionModeSelect"
-          />
-
-          <ComposerDropdown
             class="thread-composer-control"
             :model-value="selectedModel"
             :options="modelOptions"
@@ -283,6 +273,7 @@
           />
 
           <ComposerDropdown
+            v-if="!isAndroid"
             class="thread-composer-control"
             :model-value="selectedReasoningEffort"
             :options="reasoningOptions"
@@ -508,7 +499,6 @@ type AttachmentBatchStats = {
 const CONTEXT_WINDOW_BASELINE_TOKENS = 12000
 const PASTED_TEXT_FILE_THRESHOLD = 2000
 const PROMPT_OPTION_PREFIX = 'prompt:'
-const PERMISSION_MODE_KEY = 'codex-web-local.permission-mode.v1'
 
 const draft = ref('')
 const selectedImages = ref<SelectedImage[]>([])
@@ -577,13 +567,6 @@ const isAndroid = typeof navigator !== 'undefined' && /Android/i.test(navigator.
 const DRAFT_STORAGE_PREFIX = 'codex-web-local.thread-draft.v1.'
 let lastActiveThreadId = ''
 
-const permissionOptions = [
-  { value: 'default', label: 'Default' },
-  { value: 'custom', label: 'Custom' },
-  { value: 'full-access', label: 'Full access' },
-]
-const selectedPermissionMode = ref(loadPermissionMode())
-
 const reasoningOptions: Array<{ value: ReasoningEffort; label: string }> = [
   { value: 'none', label: 'None' },
   { value: 'minimal', label: 'Minimal' },
@@ -631,19 +614,6 @@ const skillDropdownOptions = computed(() =>
     })),
   ],
 )
-
-function loadPermissionMode(): string {
-  if (typeof window === 'undefined') return 'full-access'
-  const saved = window.localStorage.getItem(PERMISSION_MODE_KEY)
-  return saved === 'default' || saved === 'custom' || saved === 'full-access'
-    ? saved
-    : 'full-access'
-}
-
-function onPermissionModeSelect(mode: string): void {
-  selectedPermissionMode.value = mode
-  window.localStorage?.setItem(PERMISSION_MODE_KEY, mode)
-}
 
 const canSubmit = computed(() => {
   if (props.disabled) return false
@@ -2067,6 +2037,16 @@ watch(
 
 .thread-composer-controls {
   @apply relative mt-2 sm:mt-3 flex items-center gap-2 sm:gap-4 overflow-visible pb-px;
+}
+
+@media (max-width: 767px) {
+  .thread-composer-controls {
+    @apply gap-1.5;
+  }
+
+  .thread-composer-control {
+    @apply flex-1;
+  }
 }
 
 .thread-composer-controls--recording {

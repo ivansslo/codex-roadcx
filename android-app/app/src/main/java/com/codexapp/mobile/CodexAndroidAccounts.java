@@ -133,7 +133,10 @@ public final class CodexAndroidAccounts {
                 while ((line = buffered.readLine()) != null) {
                     Matcher matcher = URL_PATTERN.matcher(line);
                     if (matcher.find()) {
-                        loginUrl.complete(sanitizeLoginUrl(matcher.group()));
+                        String url = sanitizeLoginUrl(matcher.group());
+                        if (!isLoopbackUrl(url)) {
+                            loginUrl.complete(url);
+                        }
                     }
                 }
             } catch (IOException ignored) {
@@ -183,6 +186,13 @@ public final class CodexAndroidAccounts {
         }
         url = url.replaceAll(":([0-9]+)\\.(?=/|$)", ":$1");
         return url;
+    }
+
+    private static boolean isLoopbackUrl(String url) {
+        return url.startsWith("http://localhost")
+            || url.startsWith("https://localhost")
+            || url.startsWith("http://127.0.0.1")
+            || url.startsWith("https://127.0.0.1");
     }
 
     private static String escape(String value) {
