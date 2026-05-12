@@ -10,30 +10,33 @@ This file tracks manual regression and feature verification steps.
 - Light and dark themes are both available from Settings.
 
 #### Steps
-1. Run `npm run build:android` from the repository root.
-2. Confirm `android-app/app/src/main/assets/codexui/index.html` exists.
-3. From `android-app`, run `gradle assembleDebug`.
-4. Install `android-app/app/build/outputs/apk/debug/app-debug.apk` on an Android device or emulator.
-5. Open the Codex app from the Android launcher in light theme.
-6. Confirm the existing Vue Codex UI loads inside the app WebView rather than an external browser.
-7. Navigate within the UI and press Android Back.
-8. Confirm WebView history is used before the app exits.
-9. Grant microphone permission when prompted and verify the dictation control can request audio access.
-10. Switch to dark theme and repeat navigation and layout checks.
+1. Run `npm run stage:android:runtime` from the repository root.
+2. Run `npm run build:android` from the repository root.
+3. Confirm `android-app/app/src/main/assets/codexui/index.html` exists.
+4. Confirm `android-app/app/src/main/assets/codex-runtime/codex.bin` exists.
+5. From `android-app`, run `gradle assembleDebug`.
+6. Install `android-app/app/build/outputs/apk/debug/app-debug.apk` on an Android device or emulator.
+7. Open the Codex app from the Android launcher in light theme.
+8. Confirm the existing Vue Codex UI loads inside the app WebView rather than an external browser.
+9. Navigate within the UI and press Android Back.
+10. Confirm WebView history is used before the app exits.
+11. Grant microphone permission when prompted and verify the dictation control can request audio access.
+12. Switch to dark theme and repeat navigation and layout checks.
 
 #### Expected Results
 - The Android app launches as a native APK with the existing Codex UI packaged as local WebView assets.
 - Asset paths resolve through the app-owned localhost server at `http://127.0.0.1:37645/index.html`.
 - `http://127.0.0.1:37645/android/health` returns an Android health JSON response while the app is running.
 - `http://127.0.0.1:37645/android/runtime` reports the app-private Codex executable path and whether the runtime is missing, installed, or running.
-- `POST http://127.0.0.1:37645/codex-api/rpc` returns HTTP 503 with a clear runtime-missing error until an Android-compatible Codex executable exists at `<app files>/codex-runtime/codex.bin`.
+- The staged runtime assets are extracted into `<app files>/codex-runtime/` on first launch.
+- `POST http://127.0.0.1:37645/codex-api/rpc` starts the extracted runtime or returns HTTP 503 with a clear runtime startup error.
 - The JavaScript bridge `CodexAndroid.getRuntimeInfo()` returns Android/WebView runtime metadata.
 - Light and dark theme UI surfaces remain readable and match the existing responsive web UI.
 - Codex app-server functionality is not expected to work until the Android runtime service milestone is implemented.
 
 #### Rollback/Cleanup
 - Uninstall the debug app from the Android device or emulator.
-- Remove `dist-android-web` and `android-app/app/src/main/assets/codexui` if a clean tree is needed.
+- Remove `dist-android-web`, `android-app/app/src/main/assets/codexui`, and `android-app/app/src/main/assets/codex-runtime` if a clean tree is needed.
 
 ## Template
 

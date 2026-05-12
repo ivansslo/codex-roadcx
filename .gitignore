@@ -15,3 +15,4 @@ pnpm-lock.yaml
 package.json
 .omx/
 android-app/app/src/main/assets/codexui/
+android-app/app/src/main/assets/codex-runtime/

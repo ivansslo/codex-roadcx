@@ -50,6 +50,7 @@
     "build:frontend": "vue-tsc --noEmit && vite build",
     "build:android:web": "vue-tsc --noEmit && vite build --config vite.config.android.ts",
     "sync:android:assets": "node scripts/sync-android-assets.mjs",
+    "stage:android:runtime": "node scripts/stage-android-runtime.mjs",
     "build:android": "npm run build:android:web && npm run sync:android:assets",
     "build:cli": "tsup",
     "build": "pnpm run build:frontend && pnpm run build:cli",

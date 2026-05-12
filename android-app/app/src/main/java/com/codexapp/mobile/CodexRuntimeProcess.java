@@ -8,7 +8,9 @@ import org.json.JSONObject;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
@@ -21,6 +23,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public final class CodexRuntimeProcess {
     private static final int RPC_TIMEOUT_SECONDS = 90;
+    private static final String RUNTIME_ASSET_ROOT = "codex-runtime";
+    private static final String RUNTIME_VERSION_FILE = ".asset-version";
+    private static final String RUNTIME_ASSET_VERSION = "1";
     private static final AtomicInteger NEXT_ID = new AtomicInteger(1);
     private static final Object LOCK = new Object();
 
@@ -47,6 +52,11 @@ public final class CodexRuntimeProcess {
     }
 
     public synchronized RuntimeStatus getStatus() {
+        try {
+            installRuntimeAssetsIfAvailable();
+        } catch (IOException ignored) {
+            // Status should remain best-effort; callRpc reports install failures explicitly.
+        }
         File executable = getExecutable();
         return new RuntimeStatus(executable.getAbsolutePath(), executable.canExecute(), process != null && process.isAlive());
     }
@@ -102,6 +112,7 @@ public final class CodexRuntimeProcess {
         }
 
         File executable = getExecutable();
+        installRuntimeAssetsIfAvailable();
         if (!executable.exists()) {
             throw new IOException("Codex runtime is not installed at " + executable.getAbsolutePath());
         }
@@ -136,6 +147,59 @@ public final class CodexRuntimeProcess {
         process = builder.start();
         stdin = new BufferedWriter(new OutputStreamWriter(process.getOutputStream(), StandardCharsets.UTF_8));
         startReaders(process);
+    }
+
+    private void installRuntimeAssetsIfAvailable() throws IOException {
+        File runtimeDirectory = getRuntimeDirectory();
+        if (!runtimeDirectory.exists() && !runtimeDirectory.mkdirs()) {
+            throw new IOException("Failed to create " + runtimeDirectory.getAbsolutePath());
+        }
+
+        File versionFile = new File(runtimeDirectory, RUNTIME_VERSION_FILE);
+        File executable = getExecutable();
+        File sharedLibrary = new File(runtimeDirectory, "libc++_shared.so");
+        if (executable.exists() && sharedLibrary.exists() && versionFile.exists()) {
+            return;
+        }
+
+        if (!assetExists(RUNTIME_ASSET_ROOT + "/codex.bin")) {
+            return;
+        }
+        copyAsset(RUNTIME_ASSET_ROOT + "/codex.bin", executable);
+        copyAsset(RUNTIME_ASSET_ROOT + "/libc++_shared.so", sharedLibrary);
+        if (!executable.setExecutable(true)) {
+            throw new IOException("Failed to mark Codex runtime executable at " + executable.getAbsolutePath());
+        }
+        writeVersionFile(versionFile);
+    }
+
+    private boolean assetExists(String assetPath) {
+        try (InputStream ignored = context.getAssets().open(assetPath)) {
+            return true;
+        } catch (IOException ignored) {
+            return false;
+        }
+    }
+
+    private void copyAsset(String assetPath, File target) throws IOException {
+        File parent = target.getParentFile();
+        if (parent != null && !parent.exists() && !parent.mkdirs()) {
+            throw new IOException("Failed to create " + parent.getAbsolutePath());
+        }
+        try (InputStream input = context.getAssets().open(assetPath);
+             FileOutputStream output = new FileOutputStream(target, false)) {
+            byte[] buffer = new byte[1024 * 1024];
+            int read;
+            while ((read = input.read(buffer)) != -1) {
+                output.write(buffer, 0, read);
+            }
+        }
+    }
+
+    private void writeVersionFile(File versionFile) throws IOException {
+        try (FileOutputStream output = new FileOutputStream(versionFile, false)) {
+            output.write(RUNTIME_ASSET_VERSION.getBytes(StandardCharsets.UTF_8));
+        }
     }
 
     private void startReaders(Process currentProcess) {
