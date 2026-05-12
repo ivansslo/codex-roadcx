@@ -38,6 +38,7 @@ public final class CodexRuntimeProcess {
     private BufferedWriter stdin;
     private Thread stdoutThread;
     private Thread stderrThread;
+    private boolean initialized;
 
     private CodexRuntimeProcess(Context context) {
         this.context = context.getApplicationContext();
@@ -75,34 +76,55 @@ public final class CodexRuntimeProcess {
         }
 
         ensureStarted();
+        ensureInitialized();
 
+        JSONObject response = sendRequest(method, incoming.has("params") ? incoming.get("params") : JSONObject.NULL);
+        return toHttpEnvelope(response);
+    }
+
+    private void ensureInitialized() throws IOException, JSONException, TimeoutException {
+        if (initialized) {
+            return;
+        }
+        JSONObject params = new JSONObject();
+        JSONObject clientInfo = new JSONObject();
+        clientInfo.put("name", "codex-android");
+        clientInfo.put("version", "0.1.0");
+        JSONObject capabilities = new JSONObject();
+        capabilities.put("experimentalApi", true);
+        params.put("clientInfo", clientInfo);
+        params.put("capabilities", capabilities);
+
+        JSONObject response = sendRequest("initialize", params);
+        if (response.has("error")) {
+            throw new IOException("Codex app-server initialize failed: " + response.get("error").toString());
+        }
+
+        JSONObject initializedNotification = new JSONObject();
+        initializedNotification.put("jsonrpc", "2.0");
+        initializedNotification.put("method", "initialized");
+        stdin.write(initializedNotification.toString());
+        stdin.write("\n");
+        stdin.flush();
+        initialized = true;
+    }
+
+    private JSONObject sendRequest(String method, Object params) throws IOException, JSONException, TimeoutException {
         int id = NEXT_ID.getAndIncrement();
         JSONObject request = new JSONObject();
         request.put("jsonrpc", "2.0");
         request.put("id", id);
         request.put("method", method);
-        request.put("params", incoming.has("params") ? incoming.get("params") : JSONObject.NULL);
+        request.put("params", params);
 
         CompletableFuture<String> future = new CompletableFuture<>();
         pending.put(id, future);
         stdin.write(request.toString());
         stdin.write("\n");
         stdin.flush();
-
         try {
             String response = future.get(RPC_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-            JSONObject parsed = new JSONObject(response);
-            if (parsed.has("result")) {
-                JSONObject envelope = new JSONObject();
-                envelope.put("result", parsed.get("result"));
-                return envelope.toString();
-            }
-            if (parsed.has("error")) {
-                JSONObject envelope = new JSONObject();
-                envelope.put("error", parsed.get("error"));
-                return envelope.toString();
-            }
-            return "{\"error\":\"Malformed Codex app-server response\"}";
+            return new JSONObject(response);
         } catch (TimeoutException error) {
             pending.remove(id);
             throw error;
@@ -110,6 +132,20 @@ public final class CodexRuntimeProcess {
             pending.remove(id);
             throw new IOException("Codex RPC failed", error);
         }
+    }
+
+    private static String toHttpEnvelope(JSONObject parsed) throws JSONException {
+        if (parsed.has("result")) {
+            JSONObject envelope = new JSONObject();
+            envelope.put("result", parsed.get("result"));
+            return envelope.toString();
+        }
+        if (parsed.has("error")) {
+            JSONObject envelope = new JSONObject();
+            envelope.put("error", parsed.get("error"));
+            return envelope.toString();
+        }
+        return "{\"error\":\"Malformed Codex app-server response\"}";
     }
 
     private static String getAndroidCatalogFallback(String method) {
@@ -142,6 +178,7 @@ public final class CodexRuntimeProcess {
         if (process != null && process.isAlive() && stdin != null) {
             return;
         }
+        initialized = false;
 
         File executable = getExecutable();
         installRuntimeAssetsIfAvailable();
