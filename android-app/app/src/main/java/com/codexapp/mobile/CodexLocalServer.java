@@ -171,6 +171,34 @@ public final class CodexLocalServer {
                 writeText(output, 200, "application/json", "{\"data\":[]}", headOnly);
                 return;
             }
+            if ("GET".equals(method) && path.startsWith("/codex-api/accounts/active")) {
+                writeText(output, 200, "application/json", CodexAndroidAccounts.listAccounts(context), headOnly);
+                return;
+            }
+            if ("GET".equals(method) && path.startsWith("/codex-api/accounts")) {
+                writeText(output, 200, "application/json", CodexAndroidAccounts.listAccounts(context), headOnly);
+                return;
+            }
+            if ("POST".equals(method) && path.startsWith("/codex-api/accounts/refresh")) {
+                writeText(output, 200, "application/json", CodexAndroidAccounts.refresh(context), headOnly);
+                return;
+            }
+            if ("POST".equals(method) && path.startsWith("/codex-api/accounts/login/start")) {
+                try {
+                    writeText(output, 200, "application/json", CodexAndroidAccounts.startLogin(context), headOnly);
+                } catch (Exception error) {
+                    writeText(output, 500, "application/json", "{\"error\":\"account_login_start_failed\",\"message\":\"" + jsonEscape(error.getMessage()) + "\"}", headOnly);
+                }
+                return;
+            }
+            if ("POST".equals(method) && path.startsWith("/codex-api/accounts/login/complete")) {
+                try {
+                    writeText(output, 200, "application/json", CodexAndroidAccounts.completeLogin(context, body), headOnly);
+                } catch (Exception error) {
+                    writeText(output, 500, "application/json", "{\"error\":\"account_login_complete_failed\",\"message\":\"" + jsonEscape(error.getMessage()) + "\"}", headOnly);
+                }
+                return;
+            }
             if ("POST".equals(method) && path.startsWith("/codex-api/server-requests/respond")) {
                 writeText(output, 200, "application/json", "{\"ok\":true}", headOnly);
                 return;

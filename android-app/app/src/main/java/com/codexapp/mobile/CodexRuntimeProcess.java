@@ -121,8 +121,8 @@ public final class CodexRuntimeProcess {
             throw new IOException("Codex runtime is not executable at " + executable.getAbsolutePath());
         }
 
-        File codexHome = new File(context.getFilesDir(), "codex-home");
-        File workspaceRoot = new File(context.getFilesDir(), "workspaces");
+        File codexHome = getCodexHomeDirectory();
+        File workspaceRoot = getWorkspaceDirectory();
         if (!codexHome.exists() && !codexHome.mkdirs()) {
             throw new IOException("Failed to create " + codexHome.getAbsolutePath());
         }
@@ -139,11 +139,7 @@ public final class CodexRuntimeProcess {
             "sandbox_mode=\"danger-full-access\""
         );
         builder.directory(workspaceRoot);
-        builder.environment().put("HOME", context.getFilesDir().getAbsolutePath());
-        builder.environment().put("CODEX_HOME", codexHome.getAbsolutePath());
-        builder.environment().put("TMPDIR", context.getCacheDir().getAbsolutePath());
-        builder.environment().put("CODEX_SELF_EXE", executable.getAbsolutePath());
-        builder.environment().put("LD_LIBRARY_PATH", getRuntimeLibraryDirectory().getAbsolutePath());
+        populateRuntimeEnvironment(builder.environment());
 
         process = builder.start();
         stdin = new BufferedWriter(new OutputStreamWriter(process.getOutputStream(), StandardCharsets.UTF_8));
@@ -253,6 +249,35 @@ public final class CodexRuntimeProcess {
             return nativeExecutable;
         }
         return new File(getRuntimeDirectory(), "codex.bin");
+    }
+
+    public File getExecutableForLaunch() throws IOException {
+        installRuntimeAssetsIfAvailable();
+        File executable = getExecutable();
+        if (!executable.exists()) {
+            throw new IOException("Codex runtime is not installed at " + executable.getAbsolutePath());
+        }
+        if (!executable.canExecute() && !executable.setExecutable(true)) {
+            throw new IOException("Codex runtime is not executable at " + executable.getAbsolutePath());
+        }
+        return executable;
+    }
+
+    public File getCodexHomeDirectory() {
+        return new File(context.getFilesDir(), "codex-home");
+    }
+
+    public File getWorkspaceDirectory() {
+        return new File(context.getFilesDir(), "workspaces");
+    }
+
+    public void populateRuntimeEnvironment(Map<String, String> env) throws IOException {
+        File executable = getExecutableForLaunch();
+        env.put("HOME", context.getFilesDir().getAbsolutePath());
+        env.put("CODEX_HOME", getCodexHomeDirectory().getAbsolutePath());
+        env.put("TMPDIR", context.getCacheDir().getAbsolutePath());
+        env.put("CODEX_SELF_EXE", executable.getAbsolutePath());
+        env.put("LD_LIBRARY_PATH", getRuntimeLibraryDirectory().getAbsolutePath());
     }
 
     private File getRuntimeDirectory() {
