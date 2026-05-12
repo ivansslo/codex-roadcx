@@ -878,13 +878,15 @@ let toastTimer: ReturnType<typeof setTimeout> | null = null
 let composioSearchTimer: ReturnType<typeof setTimeout> | null = null
 let isComposioLoadQueued = false
 
+const isAndroidHost = typeof window !== 'undefined' && 'CodexAndroid' in window
 const activeCopy = computed(() => tabs.find((tab) => tab.id === activeTab.value) ?? tabs[0])
 const supportsPlugins = computed(() =>
+  isAndroidHost ||
   !methodsLoaded.value ||
   ['plugin/list', 'plugin/read', 'plugin/install', 'plugin/uninstall'].every((method) => methodSet.value.has(method)),
 )
-const supportsApps = computed(() => !methodsLoaded.value || methodSet.value.has('app/list'))
-const supportsMcps = computed(() => !methodsLoaded.value || methodSet.value.has('mcpServerStatus/list'))
+const supportsApps = computed(() => isAndroidHost || !methodsLoaded.value || methodSet.value.has('app/list'))
+const supportsMcps = computed(() => isAndroidHost || !methodsLoaded.value || methodSet.value.has('mcpServerStatus/list'))
 const supportsMcpReload = computed(() => methodSet.value.has('config/mcpServer/reload'))
 const supportsMcpLogin = computed(() => methodSet.value.has('mcpServer/oauth/login'))
 const isTryActionInFlight = computed(() => (props.tryInFlightKey ?? '').length > 0)

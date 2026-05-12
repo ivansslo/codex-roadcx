@@ -15,6 +15,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -51,6 +52,7 @@ public final class CodexLocalServer {
         + "\"turn/interrupt\","
         + "\"turn/start\""
         + "]}";
+    private static final CopyOnWriteArrayList<NotificationClient> NOTIFICATION_CLIENTS = new CopyOnWriteArrayList<>();
 
     private static LocalHttpServer server;
 
@@ -78,6 +80,33 @@ public final class CodexLocalServer {
             }
             server.stop();
             server = null;
+        }
+    }
+
+    public static void broadcastNotification(String notificationJson) {
+        byte[] body = ("data: " + notificationJson + "\n\n").getBytes(StandardCharsets.UTF_8);
+        for (NotificationClient client : NOTIFICATION_CLIENTS) {
+            if (!client.write(body)) {
+                NOTIFICATION_CLIENTS.remove(client);
+            }
+        }
+    }
+
+    private static final class NotificationClient {
+        private final OutputStream output;
+
+        NotificationClient(OutputStream output) {
+            this.output = output;
+        }
+
+        synchronized boolean write(byte[] body) {
+            try {
+                output.write(body);
+                output.flush();
+                return true;
+            } catch (IOException ignored) {
+                return false;
+            }
         }
     }
 
@@ -174,6 +203,10 @@ public final class CodexLocalServer {
                     return;
                 }
                 if (path.startsWith("/codex-api/")) {
+                    if ("GET".equals(method) && path.startsWith("/codex-api/events")) {
+                        handleEvents(socket, "HEAD".equals(method));
+                        return;
+                    }
                     handleCodexApi(socket.getOutputStream(), method, path, readBody(reader, headers), "HEAD".equals(method));
                     return;
                 }
@@ -184,10 +217,6 @@ public final class CodexLocalServer {
         }
 
         private void handleCodexApi(OutputStream output, String method, String path, String body, boolean headOnly) throws IOException {
-            if ("GET".equals(method) && path.startsWith("/codex-api/events")) {
-                writeSseReady(output, headOnly);
-                return;
-            }
             if ("GET".equals(method) && path.startsWith("/codex-api/meta/methods")) {
                 writeText(output, 200, "application/json", METHOD_CATALOG, headOnly);
                 return;
@@ -278,19 +307,42 @@ public final class CodexLocalServer {
             return new String(body, 0, offset);
         }
 
-        private static void writeSseReady(OutputStream output, boolean headOnly) throws IOException {
-            byte[] body = "event: ready\ndata: {\"ok\":true,\"platform\":\"android\"}\n\n".getBytes(StandardCharsets.UTF_8);
+        private void handleEvents(Socket socket, boolean headOnly) throws IOException {
+            OutputStream output = socket.getOutputStream();
+            byte[] ready = "event: ready\ndata: {\"ok\":true,\"platform\":\"android\"}\n\n".getBytes(StandardCharsets.UTF_8);
             String headers = "HTTP/1.1 200 OK\r\n"
                 + "Content-Type: text/event-stream\r\n"
-                + "Content-Length: " + body.length + "\r\n"
                 + "Cache-Control: no-cache\r\n"
-                + "Connection: close\r\n"
+                + "Connection: keep-alive\r\n"
+                + "X-Accel-Buffering: no\r\n"
                 + "\r\n";
             output.write(headers.getBytes(StandardCharsets.UTF_8));
-            if (!headOnly) {
-                output.write(body);
+            if (headOnly) {
+                output.flush();
+                return;
             }
-            output.flush();
+
+            NotificationClient client = new NotificationClient(output);
+            NOTIFICATION_CLIENTS.add(client);
+            try {
+                if (!client.write(ready)) {
+                    return;
+                }
+                byte[] ping = ": ping\n\n".getBytes(StandardCharsets.UTF_8);
+                while (running && !socket.isClosed()) {
+                    try {
+                        Thread.sleep(15_000L);
+                    } catch (InterruptedException ignored) {
+                        Thread.currentThread().interrupt();
+                        return;
+                    }
+                    if (!client.write(ping)) {
+                        return;
+                    }
+                }
+            } finally {
+                NOTIFICATION_CLIENTS.remove(client);
+            }
         }
 
         private void serveAsset(OutputStream output, String rawPath, boolean headOnly) throws IOException {

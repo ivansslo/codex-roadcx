@@ -254,6 +254,9 @@ public final class CodexRuntimeProcess {
         try {
             JSONObject parsed = new JSONObject(line);
             if (!parsed.has("id")) {
+                if (parsed.has("method")) {
+                    CodexLocalServer.broadcastNotification(line);
+                }
                 return;
             }
             int id = parsed.getInt("id");
