@@ -309,6 +309,14 @@ public final class CodexLocalServer {
                 writeText(output, 200, "application/json", CodexAndroidAccounts.refresh(context), headOnly);
                 return;
             }
+            if ("POST".equals(method) && path.startsWith("/codex-api/accounts/import")) {
+                try {
+                    writeText(output, 200, "application/json", CodexAndroidAccounts.importAuth(context, body), headOnly);
+                } catch (Exception error) {
+                    writeText(output, 400, "application/json", "{\"error\":\"account_import_failed\",\"message\":\"" + jsonEscape(error.getMessage()) + "\"}", headOnly);
+                }
+                return;
+            }
             if ("POST".equals(method) && path.startsWith("/codex-api/accounts/switch")) {
                 writeText(output, 200, "application/json", CodexAndroidAccounts.switchActive(context, body), headOnly);
                 return;
