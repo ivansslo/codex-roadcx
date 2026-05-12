@@ -508,6 +508,14 @@
             >
               {{ isStartingCodexLogin ? t('Logging in…') : t('Login') }}
             </button>
+            <button
+              v-else
+              class="content-header-login-button content-header-accounts-button"
+              type="button"
+              @click="openAccountSettings"
+            >
+              {{ t('Accounts') }} {{ accounts.length }}
+            </button>
             <ComposerDropdown
               v-if="canShowTerminalToggle"
               class="content-header-terminal-command"
@@ -2304,6 +2312,15 @@ function onCancelCodexLoginModal(): void {
   if (isCompletingCodexLogin.value) return
   isCodexLoginModalOpen.value = false
   codexLoginCallbackUrl.value = ''
+}
+
+function openAccountSettings(): void {
+  if (isSidebarCollapsed.value) {
+    setSidebarCollapsed(false)
+  }
+  isSettingsOpen.value = true
+  isAccountsSectionCollapsed.value = false
+  window.localStorage?.setItem(ACCOUNTS_SECTION_COLLAPSED_STORAGE_KEY, '0')
 }
 
 async function onSubmitCodexLoginCallback(): Promise<void> {
@@ -5081,6 +5098,10 @@ async function loadWorktreeBranches(sourceCwd: string): Promise<void> {
   @apply rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-default disabled:opacity-60;
 }
 
+.content-header-accounts-button {
+  @apply bg-white text-zinc-700 ring-1 ring-zinc-200 hover:bg-zinc-50;
+}
+
 .sidebar-settings-account-empty {
   @apply text-xs text-zinc-500;
 }
@@ -5229,6 +5250,24 @@ async function loadWorktreeBranches(sourceCwd: string): Promise<void> {
 
 .sidebar-settings-account-remove.is-confirming {
   @apply border-amber-300 bg-amber-50 text-amber-700 font-medium;
+}
+
+@media (max-width: 767px) {
+  .sidebar-settings-panel {
+    @apply max-h-[calc(100dvh-5rem)];
+  }
+
+  .sidebar-settings-account-item {
+    @apply items-start;
+  }
+
+  .sidebar-settings-account-actions {
+    @apply w-auto min-w-[5rem];
+  }
+
+  .sidebar-settings-account-remove {
+    @apply visible opacity-100 pointer-events-auto;
+  }
 }
 
 .sidebar-settings-label {
