@@ -500,7 +500,6 @@
           </template>
           <template #actions>
             <button
-              v-if="accounts.length === 0"
               class="content-header-login-button"
               type="button"
               :disabled="isRefreshingAccounts || isSwitchingAccounts || isStartingCodexLogin || isCompletingCodexLogin"
@@ -509,7 +508,7 @@
               {{ isStartingCodexLogin ? t('Logging in…') : t('Login') }}
             </button>
             <button
-              v-else
+              v-if="accounts.length > 0"
               class="content-header-login-button content-header-accounts-button"
               type="button"
               @click="openAccountSettings"
