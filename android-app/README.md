@@ -1,55 +1,76 @@
-# Codex Android App
+# Android App
 
-This is the native Android shell for the Codex UI. It packages the Vue app into
-Android WebView assets so the first screen is the same UI without opening a
-separate browser.
+This module builds the native Android shell for Codex Android.
 
-Current milestone:
+The app starts a small Java HTTP server, loads the Vue Codex UI into WebView,
+and bridges browser RPC calls to an embedded Codex `app-server` process over
+stdin/stdout.
 
-- Native Android launcher app.
-- WebView host with JavaScript, DOM storage, microphone permission, and back navigation.
-- `CodexAndroid.getRuntimeInfo()` JavaScript bridge for Android runtime detection.
-- App-owned localhost server at `http://127.0.0.1:37645`.
-- `/codex-api/rpc` proxy that translates browser HTTP requests to Codex app-server JSON-RPC over stdin/stdout.
-- App-private runtime location: `<app files>/codex-runtime/codex.bin`.
-- App-private native library location: `<app files>/codex-runtime/libc++_shared.so`.
-- Executable packaged runtime location: `<nativeLibraryDir>/libcodex_bin.so`.
-- App-private Codex home: `<app files>/codex-home`.
-- Runtime asset extraction from `assets/codex-runtime/` into app-private storage on first launch.
-- Static Vue asset packaging from `dist-android-web`, served through the local Android service.
+## Runtime Layout
 
-Next runtime milestone:
+At runtime the app uses:
 
-- Extend the Android server endpoints that are still implemented by the Node bridge on desktop.
-- Store auth and workspace state under app-private Android storage.
+```text
+http://127.0.0.1:37645
+```
 
-Build flow from a host with Android SDK and Java installed:
+Important Android storage paths:
+
+```text
+<external app files>/codex-home
+<external app files>/workspaces
+<internal app files>/codex-runtime
+<nativeLibraryDir>/libcodex_bin.so
+```
+
+On a typical device, external app files resolve to:
+
+```text
+/storage/emulated/0/Android/data/com.codexapp.mobile/files
+```
+
+`codex-home` contains auth, sessions, plugins, skills, and Codex config.
+`workspaces` is the default project root.
+
+## Build From Termux
+
+Required Termux packages used in this workspace:
+
+```bash
+pkg install nodejs openjdk-17 gradle aapt aapt2 apksigner
+```
+
+Build from the repo root:
 
 ```bash
 npm run stage:android:runtime
 npm run build:android
 cd android-app
-gradle assembleDebug
-```
-
-On Termux, AGP's downloaded Linux `aapt2` binary cannot run because it targets
-desktop Linux. Use Termux's native `aapt2` override:
-
-```bash
 gradle -Pandroid.aapt2FromMavenOverride=/data/data/com.termux/files/usr/bin/aapt2 assembleDebug
 ```
 
-The debug APK is written to:
+Copy the APK to Downloads:
 
-```text
-android-app/app/build/outputs/apk/debug/app-debug.apk
+```bash
+cp app/build/outputs/apk/debug/app-debug.apk /storage/emulated/0/Download/codexapp-debug.apk
+apksigner verify --verbose /storage/emulated/0/Download/codexapp-debug.apk
 ```
 
-`npm run stage:android:runtime` copies `codex.bin` and `libc++_shared.so` from the
-Termux-compatible Codex package into ignored Android assets. Override the source
-with `CODEX_ANDROID_RUNTIME_SOURCE=/path/to/runtime/bin` when staging from a
-different runtime build.
+## Current Android Bridge Endpoints
 
-This Termux workspace has been tested with `openjdk-17`, `gradle`, `aapt`,
-`aapt2`, and `apksigner` from Termux packages plus Android SDK command-line
-tools installed under a local SDK directory.
+- `/android/health`
+- `/android/runtime`
+- `/android/runtime-config`
+- `/codex-api/rpc`
+- `/codex-api/events`
+- `/codex-api/accounts/*`
+- `/codex-api/workspace-roots-state`
+- `/codex-api/project-root`
+- `/codex-api/local-directory`
+- `/codex-api/projectless-thread-cwd`
+- `/codex-local-image`
+- `/codex-local-file`
+- `/codex-local-directories`
+
+Plugin, app, skill, MCP, model, quota, thread, and turn operations are forwarded
+to the embedded Codex app-server.
