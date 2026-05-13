@@ -72,11 +72,6 @@ public final class CodexRuntimeProcess {
             return "{\"error\":\"Invalid body: expected { method, params? }\"}";
         }
 
-        String androidFallback = getAndroidCatalogFallback(method);
-        if (androidFallback != null) {
-            return androidFallback;
-        }
-
         ensureStarted();
         ensureInitialized();
 
@@ -148,32 +143,6 @@ public final class CodexRuntimeProcess {
             return envelope.toString();
         }
         return "{\"error\":\"Malformed Codex app-server response\"}";
-    }
-
-    private static String getAndroidCatalogFallback(String method) {
-        switch (method) {
-            case "plugin/list":
-                return "{\"result\":{\"marketplaces\":[]}}";
-            case "plugin/read":
-                return "{\"result\":{\"plugin\":null}}";
-            case "plugin/install":
-                return "{\"result\":{\"authPolicy\":\"NONE\",\"appsNeedingAuth\":[]}}";
-            case "plugin/uninstall":
-            case "config/mcpServer/reload":
-            case "config/batchWrite":
-                return "{\"result\":{}}";
-            case "app/list":
-            case "mcpServerStatus/list":
-                return "{\"result\":{\"data\":[],\"nextCursor\":null}}";
-            case "skills/list":
-                return "{\"result\":{\"data\":[]}}";
-            case "account/rateLimits/read":
-                return "{\"result\":{\"primary\":null,\"secondary\":null}}";
-            case "collaborationMode/list":
-                return "{\"result\":{\"data\":[]}}";
-            default:
-                return null;
-        }
     }
 
     private synchronized void ensureStarted() throws IOException {

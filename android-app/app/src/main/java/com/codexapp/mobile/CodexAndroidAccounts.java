@@ -1,6 +1,7 @@
 package com.codexapp.mobile;
 
 import android.content.Context;
+import android.util.Base64;
 
 import org.json.JSONObject;
 
@@ -41,11 +42,19 @@ public final class CodexAndroidAccounts {
                 return "{\"data\":{\"activeAccountId\":null,\"accounts\":[]}}";
             }
             String authMode = auth.optString("auth_mode", "chatgpt");
+            JSONObject profile = readProfile(auth);
+            String email = profile.optString("email", "");
+            if (email.isEmpty()) {
+                email = profile.optString("preferred_username", "");
+            }
+            if (email.isEmpty()) {
+                email = profile.optString("name", "");
+            }
             String now = java.time.Instant.now().toString();
             return "{\"data\":{\"activeAccountId\":\"" + escape(accountId) + "\",\"accounts\":[{"
                 + "\"accountId\":\"" + escape(accountId) + "\","
                 + "\"authMode\":\"" + escape(authMode) + "\","
-                + "\"email\":null,"
+                + "\"email\":" + nullableString(email) + ","
                 + "\"planType\":null,"
                 + "\"lastRefreshedAtIso\":\"" + now + "\","
                 + "\"lastActivatedAtIso\":\"" + now + "\","
@@ -196,6 +205,24 @@ public final class CodexAndroidAccounts {
         return new File(CodexRuntimeProcess.get(context).getCodexHomeDirectory(), "auth.json");
     }
 
+    private static JSONObject readProfile(JSONObject auth) {
+        try {
+            JSONObject tokens = auth.optJSONObject("tokens");
+            if (tokens == null) {
+                return new JSONObject();
+            }
+            String idToken = tokens.optString("id_token", "");
+            String[] parts = idToken.split("\\.");
+            if (parts.length < 2) {
+                return new JSONObject();
+            }
+            byte[] decoded = Base64.decode(parts[1], Base64.URL_SAFE | Base64.NO_PADDING | Base64.NO_WRAP);
+            return new JSONObject(new String(decoded, StandardCharsets.UTF_8));
+        } catch (Exception ignored) {
+            return new JSONObject();
+        }
+    }
+
     private static String sanitizeLoginUrl(String rawUrl) {
         String url = rawUrl == null ? "" : rawUrl.trim();
         while (url.endsWith(".") || url.endsWith(",") || url.endsWith(";") || url.endsWith(")") || url.endsWith("]")) {
@@ -214,5 +241,12 @@ public final class CodexAndroidAccounts {
 
     private static String escape(String value) {
         return value.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r");
+    }
+
+    private static String nullableString(String value) {
+        if (value == null || value.isEmpty()) {
+            return "null";
+        }
+        return "\"" + escape(value) + "\"";
     }
 }

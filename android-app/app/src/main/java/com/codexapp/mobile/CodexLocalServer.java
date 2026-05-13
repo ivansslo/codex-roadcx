@@ -5,10 +5,13 @@ import android.content.res.AssetManager;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.net.URLDecoder;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
@@ -216,6 +219,10 @@ public final class CodexLocalServer {
                         return;
                     }
                     handleCodexApi(socket.getOutputStream(), method, path, readBody(reader, headers), "HEAD".equals(method));
+                    return;
+                }
+                if (path.startsWith("/codex-local-image") || path.startsWith("/codex-local-file")) {
+                    serveLocalFile(socket.getOutputStream(), path, "HEAD".equals(method));
                     return;
                 }
                 if (path.startsWith("/codex-local-directories")) {
@@ -426,6 +433,48 @@ public final class CodexLocalServer {
                 }
             } finally {
                 NOTIFICATION_CLIENTS.remove(client);
+            }
+        }
+
+        private void serveLocalFile(OutputStream output, String rawPath, boolean headOnly) throws IOException {
+            String localPath = queryParam(rawPath, "path");
+            if (localPath.isEmpty() || !new File(localPath).isAbsolute()) {
+                writeText(output, 400, "application/json", "{\"error\":\"Expected absolute local file path.\"}", headOnly);
+                return;
+            }
+            File file = new File(localPath);
+            if (!file.isFile()) {
+                writeText(output, 404, "application/json", "{\"error\":\"File not found.\"}", headOnly);
+                return;
+            }
+            String type = rawPath.startsWith("/codex-local-image") ? contentType(localPath) : "application/octet-stream";
+            try (InputStream input = new FileInputStream(file)) {
+                writeBytes(output, 200, type, readAll(input), headOnly);
+            }
+        }
+
+        private static String queryParam(String rawPath, String name) {
+            int queryIndex = rawPath.indexOf('?');
+            if (queryIndex < 0 || queryIndex == rawPath.length() - 1) {
+                return "";
+            }
+            String[] parts = rawPath.substring(queryIndex + 1).split("&");
+            for (String part : parts) {
+                int separator = part.indexOf('=');
+                String key = separator >= 0 ? part.substring(0, separator) : part;
+                if (!name.equals(urlDecode(key))) {
+                    continue;
+                }
+                return urlDecode(separator >= 0 ? part.substring(separator + 1) : "");
+            }
+            return "";
+        }
+
+        private static String urlDecode(String value) {
+            try {
+                return URLDecoder.decode(value.replace("+", "%2B"), StandardCharsets.UTF_8.name());
+            } catch (Exception ignored) {
+                return "";
             }
         }
 
