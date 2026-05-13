@@ -8,6 +8,7 @@ import org.json.JSONObject;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.FileInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -337,11 +338,15 @@ public final class CodexRuntimeProcess {
     }
 
     public File getCodexHomeDirectory() {
-        return new File(context.getFilesDir(), "codex-home");
+        File directory = new File(getStorageRootDirectory(), "codex-home");
+        migrateLegacyDirectory(new File(context.getFilesDir(), "codex-home"), directory);
+        return directory;
     }
 
     public File getWorkspaceDirectory() {
-        return new File(context.getFilesDir(), "workspaces");
+        File directory = new File(getStorageRootDirectory(), "workspaces");
+        migrateLegacyDirectory(new File(context.getFilesDir(), "workspaces"), directory);
+        return directory;
     }
 
     public void populateRuntimeEnvironment(Map<String, String> env) throws IOException {
@@ -355,6 +360,53 @@ public final class CodexRuntimeProcess {
 
     private File getRuntimeDirectory() {
         return new File(context.getFilesDir(), "codex-runtime");
+    }
+
+    private File getStorageRootDirectory() {
+        File external = context.getExternalFilesDir(null);
+        if (external != null) {
+            return external;
+        }
+        return context.getFilesDir();
+    }
+
+    private void migrateLegacyDirectory(File source, File target) {
+        if (source.equals(target) || !source.exists() || target.exists()) {
+            return;
+        }
+        try {
+            copyRecursively(source, target);
+        } catch (IOException ignored) {
+            // Fall back to the new empty directory if legacy migration fails.
+        }
+    }
+
+    private void copyRecursively(File source, File target) throws IOException {
+        if (source.isDirectory()) {
+            if (!target.exists() && !target.mkdirs()) {
+                throw new IOException("Failed to create " + target.getAbsolutePath());
+            }
+            File[] children = source.listFiles();
+            if (children == null) {
+                return;
+            }
+            for (File child : children) {
+                copyRecursively(child, new File(target, child.getName()));
+            }
+            return;
+        }
+        File parent = target.getParentFile();
+        if (parent != null && !parent.exists() && !parent.mkdirs()) {
+            throw new IOException("Failed to create " + parent.getAbsolutePath());
+        }
+        try (FileInputStream input = new FileInputStream(source);
+             FileOutputStream output = new FileOutputStream(target, false)) {
+            byte[] buffer = new byte[1024 * 1024];
+            int read;
+            while ((read = input.read(buffer)) != -1) {
+                output.write(buffer, 0, read);
+            }
+        }
     }
 
     private File getRuntimeLibraryDirectory() {
