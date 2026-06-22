@@ -113,6 +113,30 @@ public final class CodexLocalServer {
         }
     }
 
+    public static String getLocalIpAddress() {
+        try {
+            java.util.Enumeration<java.net.NetworkInterface> interfaces = java.net.NetworkInterface.getNetworkInterfaces();
+            while (interfaces.hasMoreElements()) {
+                java.net.NetworkInterface networkInterface = interfaces.nextElement();
+                if (networkInterface.isLoopback() || !networkInterface.isUp()) continue;
+                java.util.Enumeration<java.net.InetAddress> addresses = networkInterface.getInetAddresses();
+                while (addresses.hasMoreElements()) {
+                    java.net.InetAddress addr = addresses.nextElement();
+                    if (addr instanceof java.net.Inet4Address && !addr.isLoopbackAddress()) {
+                        return addr.getHostAddress();
+                    }
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return "127.0.0.1";
+    }
+
+    public static String getLoginUrl() {
+        String ip = getLocalIpAddress();
+        return "http://" + ip + ":" + PORT + "/";
+    }
+
     private static final class LocalHttpServer implements Runnable {
         private final Context context;
         private final int port;

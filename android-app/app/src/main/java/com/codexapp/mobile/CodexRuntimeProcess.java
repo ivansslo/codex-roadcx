@@ -264,6 +264,17 @@ public final class CodexRuntimeProcess {
         }
     }
 
+    private void copyFile(File source, File target) throws IOException {
+        try (FileInputStream input = new FileInputStream(source);
+             FileOutputStream output = new FileOutputStream(target, false)) {
+            byte[] buffer = new byte[1024 * 1024];
+            int read;
+            while ((read = input.read(buffer)) != -1) {
+                output.write(buffer, 0, read);
+            }
+        }
+    }
+
     private void writeVersionFile(File versionFile) throws IOException {
         try (FileOutputStream output = new FileOutputStream(versionFile, false)) {
             output.write(RUNTIME_ASSET_VERSION.getBytes(StandardCharsets.UTF_8));
