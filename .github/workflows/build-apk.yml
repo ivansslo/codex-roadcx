@@ -22,6 +22,12 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Install required SDK components
+        run: |
+          yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager \
+            "platforms;android-34" \
+            "build-tools;34.0.0" 2>&1 | tail -5
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -30,11 +36,14 @@ jobs:
       - name: Install npm dependencies
         run: npm install
 
-      - name: Download ARM64 codex runtime from npm
+      - name: Download ARM64 codex runtime (codex.bin + libc++_shared.so)
         run: |
           cd /tmp
-          npm pack @mmmbuto/codex-cli-termux
-          tar xzf mmmbuto-codex-cli-termux-*.tgz
+          PKG_FILE=$(npm pack @mmmbuto/codex-cli-termux 2>/dev/null | tail -1)
+          echo "Tarball: $PKG_FILE"
+          tar xzf "$PKG_FILE"
+          echo "Contents of /tmp/package/bin:"
+          ls -la /tmp/package/bin/
           echo "CODEX_ANDROID_RUNTIME_SOURCE=/tmp/package/bin" >> $GITHUB_ENV
 
       - name: Stage Android runtime into APK assets
@@ -43,10 +52,10 @@ jobs:
       - name: Build Android web assets (Vue + Vite)
         run: npm run build:android
 
-      - name: Build debug APK with Gradle
+      - name: Build debug APK with Gradle wrapper
         run: |
           cd android-app
-          gradle assembleDebug
+          ./gradlew assembleDebug
 
       - name: Upload debug APK artifact
         uses: actions/upload-artifact@v4
