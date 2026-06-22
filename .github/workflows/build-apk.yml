@@ -62,25 +62,25 @@ jobs:
       - name: Rename APK with version
         run: |
           VERSION=$(node -p "require('./package.json').version")
-          cp android-app/app/build/outputs/apk/debug/app-debug.apk "CodexRoadCX-v${VERSION}.apk"
+          cp android-app/app/build/outputs/apk/debug/app-debug.apk "CodexWebLocal-v${VERSION}.apk"
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: CodexRoadCX-APK
-          path: CodexRoadCX-*.apk
+          name: CodexWebLocal-APK
+          path: CodexWebLocal-*.apk
 
       - name: Create Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          name: "Codex RoadCX ${{ github.ref_name }}"
+          name: "Codex Web Local ${{ github.ref_name }}"
           body: |
-            ## Codex RoadCX APK Release
+            ## Codex Web Local APK Release
             
             - Version: ${{ github.ref_name }}
             - Build: Automatic from GitHub Actions
-          files: CodexRoadCX-*.apk
+          files: CodexWebLocal-*.apk
           draft: false
           prerelease: false
